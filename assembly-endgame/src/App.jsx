@@ -5,6 +5,18 @@ import { getFarewellText, getRandomWord } from './assets/utils';
 import Confetti from "react-confetti"
 
 
+
+// TODO:
+//  -  Add 'remaining guesses count
+//  -  Add some sort of animation when the player losses
+//  -  Add a timer on the game that causes loss if the time runs out. Each right guess would add 2 seconds to the overall time
+
+
+
+
+
+
+
 function App() {
 
   // State values
