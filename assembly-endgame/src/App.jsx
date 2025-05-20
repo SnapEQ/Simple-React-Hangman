@@ -1,15 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { languages } from './assets/languages'
 import clsx from "clsx"
 import { getFarewellText, getRandomWord } from './assets/utils';
 import Confetti from "react-confetti"
 
 
-
-// TODO:
-//  -  Add 'remaining guesses count
-//  -  Add some sort of animation when the player losses
-//  -  Add a timer on the game that causes loss if the time runs out. Each right guess would add 2 seconds to the overall time
 
 
 
@@ -22,6 +17,9 @@ function App() {
   // State values
   const [currWord, setCurrWord] = useState(() => getRandomWord());
   const [guessedLetters, setGuessedLetters] = useState([]);
+  const [timeLeft, setTimeLeft] = useState(5);
+  const [isRunning, setIsRunning] = useState(false);
+  const [farewellMessage, setFarewellMessage] = useState('');
 
   console.log(currWord)
 
@@ -34,7 +32,7 @@ function App() {
 
   const isGameWon = [...currWord].every(letter => guessedLetters.includes(letter));
 
-  const isGameLost = wrongGuesses >= languages.length - 1 ? true : false;
+  const isGameLost = wrongGuesses >= languages.length - 1 || timeLeft === 0 ? true : false;
 
   const isGameOver = isGameWon || isGameLost;
   const lastGuessedLetter = guessedLetters[guessedLetters.length - 1];
@@ -69,11 +67,40 @@ function App() {
   })
 
 
+  useEffect(() => {
+    let timer;
+    if (isRunning && timeLeft > 0 && !isGameOver) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0) {
+      setIsRunning(false);
+
+      setTimeLeft(0);
+    }
+
+
+    return () => clearInterval(timer);
+
+  }, [isRunning, timeLeft, isGameOver])
+
 
   function handleClick(letter) {
-    setGuessedLetters(prevLetters =>
-      prevLetters.includes(letter) ? prevLetters : [...prevLetters, letter]
-    )
+
+
+    if (!isRunning) {
+      setIsRunning(true);
+    }
+
+
+    if (!guessedLetters.includes(letter)) {
+      setGuessedLetters(prev => [...prev, letter]);
+
+      if (!currWord.includes(letter)) {
+        setFarewellMessage(getFarewellText(languages[wrongGuesses].name));
+
+      }
+    }
   }
 
   const keyboard = [...alphabet].map((letter) => {
@@ -105,17 +132,24 @@ function App() {
 
   const currWordChars = [...currWord].map((letter, index) => {
 
+    const shouldRevealLetter = guessedLetters.includes(letter) ||
+      (isGameLost && setTimeout(() => true, index * 200)); // Reveals letters with delay
 
-    const shouldRevealLetter = isGameLost || guessedLetters.includes(letter)
     const letterClassName = clsx(
-      isGameLost && !guessedLetters.includes(letter) && "missed-letter"
-    )
+      "letter",
+      (isGameLost && !guessedLetters.includes(letter)) && "missed-letter")
 
-
-    return (<span key={index} className={letterClassName}>
-      {shouldRevealLetter ? letter.toUpperCase() : " "}
-    </span>);
-
+    return (
+      <span
+        key={index}
+        className={letterClassName}
+        style={{
+          animationDelay: isGameLost ? `${index * 0.1}s` : '0s'
+        }}
+      >
+        {shouldRevealLetter ? letter.toUpperCase() : " "}
+      </span>
+    );
   });
 
 
@@ -131,8 +165,9 @@ function App() {
     if (!isGameOver && isLastGuessIncorrect) {
       return (
         <>
-          <p className='farewell-message'>{getFarewellText(languages[wrongGuesses - 1].name)}</p>
-        </>);
+          <p >{farewellMessage}</p>
+        </>
+      );
     }
 
     if (isGameWon) {
@@ -159,17 +194,25 @@ function App() {
   function startNewGame() {
     setCurrWord(getRandomWord);
     setGuessedLetters([]);
+    setTimeLeft(5);
+    setIsRunning(false);
+    setFarewellMessage('');
   }
 
 
 
   return (
     <>
-      <main>
+      <main className={isGameLost || timeLeft === 0 ? 'game-lost' : ''}>
         <header>
           <h1>Assembly: Endgame</h1>
           <p>Guess the word within {languages.length - 1} attempts to keep the programming word safe from Assembly!</p>
-
+          <h2>
+            Remaining guesses: {languages.length - wrongGuessArray.length - 1}
+          </h2>
+          <h2>
+            Time remaining: {timeLeft}s
+          </h2>
         </header>
         <section className={gameStatusClass}>
           {renderGameStatus()}
